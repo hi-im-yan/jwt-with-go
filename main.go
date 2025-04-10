@@ -12,6 +12,7 @@ import (
 	"github.com/hi-im-yan/jwt-with-go/server"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // @title			CRUD with Go API
@@ -21,6 +22,10 @@ func main() {
 	db := connectDB()
 	defer db.Close()
 
+	if err := ensureAdminExists(db); err != nil {
+		log.Fatal(err)
+	}
+
 	server := server.NewServer("8080", db)
 
 	fmt.Println("Starting server on port " + server.Port)
@@ -28,6 +33,30 @@ func main() {
 	if err := server.Start(); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func ensureAdminExists(db *pgxpool.Pool) error {
+	var count int
+	err := db.QueryRow(context.Background(), "SELECT COUNT(*) FROM users WHERE role = 'admin'").Scan(&count)
+	if err != nil {
+		return err
+	}
+
+	if count == 0 {
+		// Hash the password
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(os.Getenv("ADMIN_PASSWORD")), bcrypt.DefaultCost)
+		if err != nil {
+			return err
+		}
+
+		_, err = db.Exec(context.Background(), "INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4)",
+			"Admin", os.Getenv("ADMIN_EMAIL"), string(hashedPassword), "admin")
+		if err != nil {
+			return err
+		}
+		fmt.Println("✅ Admin account created: ", os.Getenv("ADMIN_EMAIL"))
+	}
+	return nil
 }
 
 func connectDB() *pgxpool.Pool {

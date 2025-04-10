@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthenticationHandler struct {
@@ -97,12 +98,21 @@ func (ah *AuthenticationHandler) RegisterNewAccount(w http.ResponseWriter, r *ht
 		}
 	}
 
+	encryptedPassword, err := bcrypt.GenerateFromPassword([]byte(newAccountReq.Password), bcrypt.DefaultCost)
+	if err != nil {
+		log.Printf("[AuthenticationHandler:login] Error hashing password: %v", err)
+		return nil, &HandlerError{
+			Status:  http.StatusInternalServerError,
+			Message: ErrorResponse{Code: "E500", Message: "Internal Server Error", Detail: "Something went wrong. Contact support or try again later"},
+		}
+	}
+
 	log.Printf("[AuthenticationHandler:registerNewAccount] Inserting new user with {name: %s} and {email: %s}", newAccountReq.Name, newAccountReq.Email)
 
 	// insert user
 	query := `INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, 'user') RETURNING id, name, email, role;`
 	insertedAccount := &user{}
-	err = ah.DB.QueryRow(r.Context(), query, newAccountReq.Name, newAccountReq.Email, newAccountReq.Password).Scan(&insertedAccount.ID, &insertedAccount.Name, &insertedAccount.Email, &insertedAccount.Role)
+	err = ah.DB.QueryRow(r.Context(), query, newAccountReq.Name, newAccountReq.Email, encryptedPassword).Scan(&insertedAccount.ID, &insertedAccount.Name, &insertedAccount.Email, &insertedAccount.Role)
 	if err != nil {
 		log.Printf("[AuthenticationHandler:registerNewAccount] Error inserting user: %v", err)
 		var pgErr *pgconn.PgError
@@ -175,9 +185,10 @@ func (ah *AuthenticationHandler) Login(w http.ResponseWriter, r *http.Request) (
 	log.Printf("[AuthenticationHandler:login] Validating user with {email: %s}", loginReq.Email)
 
 	// validate user
-	query := `SELECT id, name, email, role FROM users WHERE email = $1 AND password = $2;`
+	query := `SELECT id, name, email, role, password FROM users WHERE email = $1`
 	user := &user{}
-	err = ah.DB.QueryRow(r.Context(), query, loginReq.Email, loginReq.Password).Scan(&user.ID, &user.Name, &user.Email, &user.Role)
+	var hashedPassword string
+	err = ah.DB.QueryRow(r.Context(), query, loginReq.Email).Scan(&user.ID, &user.Name, &user.Email, &user.Role, &hashedPassword)
 	if err != nil {
 		log.Printf("[AuthenticationHandler:login] Error validating user: %v", err)
 		if err == pgx.ErrNoRows {
@@ -193,6 +204,19 @@ func (ah *AuthenticationHandler) Login(w http.ResponseWriter, r *http.Request) (
 		return nil, &HandlerError{
 			Status:  http.StatusInternalServerError,
 			Message: ErrorResponse{Code: "E500", Message: "Internal Server Error", Detail: "Something went wrong. Contact support or try again later"},
+		}
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(loginReq.Password))
+	if err != nil {
+		log.Printf("[AuthenticationHandler:login] Error validating user: %v", err)
+		return nil, &HandlerError{
+			Status: http.StatusUnauthorized,
+			Message: ErrorResponse{
+				Code:    "E401",
+				Message: "Unauthorized",
+				Detail:  "Invalid email or password",
+			},
 		}
 	}
 
