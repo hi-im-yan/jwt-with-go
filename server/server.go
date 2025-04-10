@@ -32,6 +32,11 @@ func NewServer(port string, db *pgxpool.Pool) *Server {
 
 	// Swagger Route
 	s.Router.HandleFunc("GET /swagger/*", httpSwagger.WrapHandler)
+
+	// Authentication Routes
+	ah := handlers.NewAuthenticationHandler(s.DB)
+	s.Router.Mount("/auth", ah.AuthRouter())
+	
 	// User Routes
 	uh := handlers.NewUserHandler(s.DB)
 	s.Router.Mount("/users", uh.UserRouter())
