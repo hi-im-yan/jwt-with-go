@@ -51,7 +51,7 @@ func (uh *UserHandler) UserRouter() http.Handler {
 	r.HandleFunc("GET /{id}", ApiHandlerAdapter(uh.getUser))
 	r.HandleFunc("PUT /{id}", ApiHandlerAdapter(uh.updateUser))
 	r.HandleFunc("DELETE /{id}", ApiHandlerAdapter(uh.deleteUser))
-	r.HandleFunc("GET /mock", ApiHandlerAdapter(uh.getMockUser))
+	r.With(MiddlewareAdapter(JWTAuthMiddleware)).HandleFunc("GET /mock", ApiHandlerAdapter(uh.getMockUser))
 
 	return r
 }
