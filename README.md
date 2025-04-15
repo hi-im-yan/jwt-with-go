@@ -40,11 +40,11 @@ This project provides a basic JWT authentication API in Go, using the Chi router
 
 ### Running the Application
 
-1. Clone the repository: `git clone [https://github.com/hi-im-yan/jwt-with-go.git`](git clone [https://github.com/hi-im-yan/jwt-with-go.git`)
-2. Navigate to the project directory: `cd your-repo-name`
+1. Clone the repository: `git clone https://github.com/hi-im-yan/jwt-with-go.git`
+2. Navigate to the project directory: `cd jwt-with-go`
 3. Install dependencies: `go get ./...`
 4. Create a .env file with the required environment variables
-5. Run the application: `go run main.go`
+5. Run the application: `go run main.go`. Also can run using the command `air` for hot reload.
 
 ## API Endpoints
 
