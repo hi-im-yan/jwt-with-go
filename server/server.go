@@ -36,7 +36,7 @@ func NewServer(port string, db *pgxpool.Pool) *Server {
 	// Authentication Routes
 	ah := handlers.NewAuthenticationHandler(s.DB)
 	s.Router.Mount("/auth", ah.AuthRouter())
-	
+
 	// User Routes
 	uh := handlers.NewUserHandler(s.DB)
 	s.Router.Mount("/users", uh.UserRouter())

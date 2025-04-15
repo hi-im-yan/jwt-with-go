@@ -9,15 +9,27 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	_ "github.com/hi-im-yan/jwt-with-go/docs" // this is important!
 	"github.com/hi-im-yan/jwt-with-go/server"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
+	_ "github.com/swaggo/http-swagger"
 	"golang.org/x/crypto/bcrypt"
 )
 
-// @title			CRUD with Go API
-// @version		1.0
-// @description	Simple CRUD API using Go and PostgreSQL
+// @title           Go JWT Auth API
+// @version         1.1
+// @description     A simple JWT authentication API in Go
+// @termsOfService  http://swagger.io/terms/
+// @contact.name   API Support 	
+// @contact.email  yanajiki@gmail.com
+// @license.name  MIT
+// @license.url   https://opensource.org/licenses/MIT
+// @host      localhost:8080
+// @BasePath  /
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 func main() {
 	db := connectDB()
 	defer db.Close()

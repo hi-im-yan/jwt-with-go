@@ -63,15 +63,14 @@ func logSomething(next http.Handler) http.Handler {
 	})
 }
 
-// getMockUser returns a mock user for demonstration purposes
-//
-//	@Summary		Get mock user
-//	@Description	Returns a mock user for testing purposes
-//	@Tags			users
-//	@Produce		json
-//	@Success		200	{object}	user
-//	@Failure		404	{object}	ErrorResponse
-//	@Router			/users/mock [get]
+// @Summary      Get mock user
+// @Description  Returns a mock user for demonstration purposes (Admin only)
+// @Tags         users
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200 {object} user
+// @Failure      404 {object} ErrorResponse
+// @Router       /users/mock [get]
 func (uh *UserHandler) getMockUser(w http.ResponseWriter, r *http.Request) (*HandlerSuccess, *HandlerError) {
 	shouldReturnUser := true
 
@@ -88,15 +87,18 @@ func (uh *UserHandler) getMockUser(w http.ResponseWriter, r *http.Request) (*Han
 	}
 }
 
-// @Summary		Insert a new user
-// @Description	Inserts a new user into the database
-// @Tags			users
-// @Accept			json
-// @Produce		json
-// @Param			request	body	userRequest	true	"User request"
-// @Success		201	{object}	user
-// @Failure		400	{object}	ErrorResponse
-// @Router			/users [post]
+// @Summary      Insert a new user
+// @Description  Inserts a new user into the database (Admin only)
+// @Tags         users
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        request body userRequest true "User request"
+// @Success      201 {object} user
+// @Failure      400 {object} ErrorResponse
+// @Failure      409 {object} ErrorResponse
+// @Failure      500 {object} ErrorResponse
+// @Router       /users [post]
 func (uh *UserHandler) insertUser(w http.ResponseWriter, r *http.Request) (*HandlerSuccess, *HandlerError) {
 	start := time.Now()
 	log.Printf("[UserHandler:insertUser] start")
@@ -162,13 +164,14 @@ func (uh *UserHandler) insertUser(w http.ResponseWriter, r *http.Request) (*Hand
 	}, nil
 }
 
-// @Summary		Get all users
-// @Description	Gets all users from the database
-// @Tags			users
-// @Produce		json
-// @Success		200	{array}	user
-// @Failure		500	{object}	ErrorResponse
-// @Router			/users [get]
+// @Summary      Get all users
+// @Description  Gets all users from the database
+// @Tags         users
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200 {array} user
+// @Failure      500 {object} ErrorResponse
+// @Router       /users [get]
 func (uh *UserHandler) getAllUsers(w http.ResponseWriter, r *http.Request) (*HandlerSuccess, *HandlerError) {
 	start := time.Now()
 	log.Printf("[UserHandler:getAllUsers] start")
@@ -209,16 +212,17 @@ func (uh *UserHandler) getAllUsers(w http.ResponseWriter, r *http.Request) (*Han
 	}, nil
 }
 
-// @Summary		Get user by id
-// @Description	Gets a user from the database by id
-// @Tags			users
-// @Produce		json
-// @Param			id	path	int	true	"User ID"
-// @Success		200	{object}	user
-// @Failure		400	{object}	ErrorResponse
-// @Failure		404	{object}	ErrorResponse
-// @Failure		500	{object}	ErrorResponse
-// @Router			/users/{id} [get]
+// @Summary      Get user by ID
+// @Description  Retrieves a user by their ID
+// @Tags         users
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path int true "User ID"
+// @Success      200 {object} user
+// @Failure      400 {object} ErrorResponse
+// @Failure      404 {object} ErrorResponse
+// @Failure      500 {object} ErrorResponse
+// @Router       /users/{id} [get]
 func (uh *UserHandler) getUser(w http.ResponseWriter, r *http.Request) (*HandlerSuccess, *HandlerError) {
 	start := time.Now()
 	log.Printf("[UserHandler:getUser] start")
@@ -256,17 +260,20 @@ func (uh *UserHandler) getUser(w http.ResponseWriter, r *http.Request) (*Handler
 	}, nil
 }
 
-// @Summary		Update user by id
-// @Description	Updates a user in the database by id
-// @Tags			users
-// @Produce		json
-// @Param			id	path	int	true	"User ID"
-// @Param			user	body	user	true	"User object"
-// @Success		200	{object}	user
-// @Failure		400	{object}	ErrorResponse
-// @Failure		404	{object}	ErrorResponse
-// @Failure		500	{object}	ErrorResponse
-// @Router			/users/{id} [put]
+// @Summary      Update user by ID
+// @Description  Updates a user's name and email (only self or admin allowed)
+// @Tags         users
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path int true "User ID"
+// @Param        user body userRequest true "User data"
+// @Success      200 {object} user
+// @Failure      400 {object} ErrorResponse
+// @Failure      403 {object} ErrorResponse
+// @Failure      404 {object} ErrorResponse
+// @Failure      500 {object} ErrorResponse
+// @Router       /users/{id} [put]
 func (uh *UserHandler) updateUser(w http.ResponseWriter, r *http.Request) (*HandlerSuccess, *HandlerError) {
 	start := time.Now()
 	log.Printf("[UserHandler:updateUser] start")
@@ -351,14 +358,17 @@ func (uh *UserHandler) updateUser(w http.ResponseWriter, r *http.Request) (*Hand
 	}, nil
 }
 
-// @Summary		Delete user by id
-// @Description	Deletes a user from the database by id
-// @Tags			users
-// @Produce		json
-// @Param			id	path	int	true	"User ID"
-// @Success		204
-// @Failure		400	{object}	ErrorResponse
-// @Failure		404	{object}	ErrorResponse
+// @Summary      Delete user by ID
+// @Description  Deletes a user by ID (Admin only)
+// @Tags         users
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path int true "User ID"
+// @Success      204
+// @Failure      400 {object} ErrorResponse
+// @Failure      404 {object} ErrorResponse
+// @Failure      500 {object} ErrorResponse
+// @Router       /users/{id} [delete]
 func (uh *UserHandler) deleteUser(w http.ResponseWriter, r *http.Request) (*HandlerSuccess, *HandlerError) {
 	start := time.Now()
 	log.Printf("[UserHandler:deleteUser] start")

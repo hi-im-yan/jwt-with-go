@@ -70,6 +70,18 @@ func (ah *AuthenticationHandler) CreateJwtToken(username string, role string) (s
 	return tokenString, nil
 }
 
+// RegisterNewAccount godoc
+// @Summary      Register a new account
+// @Description  Creates a new user account with name, email, and password
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        user  body      newAccountRequest  true  "New Account Info"
+// @Success      201   {object}  authResponse
+// @Failure      400   {object}  ErrorResponse "Invalid request body"
+// @Failure      409   {object}  ErrorResponse "Email already in use"
+// @Failure      500   {object}  ErrorResponse "Internal server error"
+// @Router       /register [post]
 func (ah *AuthenticationHandler) RegisterNewAccount(w http.ResponseWriter, r *http.Request) (*HandlerSuccess, *HandlerError) {
 	start := time.Now()
 	log.Printf("[AuthenticationHandler:registerNewAccount] start")
@@ -154,6 +166,18 @@ func (ah *AuthenticationHandler) RegisterNewAccount(w http.ResponseWriter, r *ht
 	}, nil
 }
 
+// Login godoc
+// @Summary      Login with credentials
+// @Description  Authenticates a user using email and password, returns a JWT. If trying to login as admin, check credentials in the .env file.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        credentials  body      loginRequest  true  "User Credentials"
+// @Success      200          {object}  authResponse
+// @Failure      400          {object}  ErrorResponse "Invalid request body"
+// @Failure      401          {object}  ErrorResponse "Invalid email or password"
+// @Failure      500          {object}  ErrorResponse "Internal server error"
+// @Router       /login [post]
 func (ah *AuthenticationHandler) Login(w http.ResponseWriter, r *http.Request) (*HandlerSuccess, *HandlerError) {
 	start := time.Now()
 	log.Printf("[AuthenticationHandler:login] start")
