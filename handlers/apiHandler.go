@@ -1,13 +1,11 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -89,38 +87,6 @@ func MiddlewareAdapter(mw ApiMiddlewareFunc) func(http.Handler) http.Handler {
 			}
 		})
 	}
-}
-
-func JWTAuthMiddleware(next ApiHandlerFunc) ApiHandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) (*HandlerSuccess, *HandlerError) {
-		authHeader := r.Header.Get("Authorization")
-
-		// Check if the Authorization header is present
-		if authHeader == "" {
-			return nil, &HandlerError{Status: http.StatusUnauthorized, Message: ErrorResponse{Code: "E401", Message: "Unauthorized", Detail: "Missing token"}}
-		}
-
-		// Token should be in the format: "Bearer <Token>"
-		parts := strings.Split(authHeader, " ")
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			return nil, &HandlerError{Status: http.StatusUnauthorized, Message: ErrorResponse{Code: "E401", Message: "Unauthorized", Detail: "Invalid token format"}}
-		}
-
-		// Verify the token
-		tokenSting := parts[1]
-		claims, err := VerifyJwtToken(tokenSting)
-		if err != nil {
-			return nil, &HandlerError{Status: http.StatusUnauthorized, Message: ErrorResponse{Code: "E401", Message: "Unauthorized", Detail: "Invalid token"}}
-		}
-
-		// Get the username and role from the claims and store them in the request context
-		ctx := context.WithValue(r.Context(), "username", claims["username"].(string))
-		ctx = context.WithValue(ctx, "role", claims["role"].(string))
-		r.WithContext(ctx)
-
-		return nil, nil
-	}
-
 }
 
 // This function verifies a JWT token and it will be used by many handlers

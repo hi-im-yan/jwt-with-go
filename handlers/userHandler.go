@@ -46,12 +46,12 @@ func (uh *UserHandler) UserRouter() http.Handler {
 	r.Use(logSomething)
 
 	// Routes
-	r.HandleFunc("POST /", ApiHandlerAdapter(uh.insertUser))
-	r.HandleFunc("GET /", ApiHandlerAdapter(uh.getAllUsers))
-	r.HandleFunc("GET /{id}", ApiHandlerAdapter(uh.getUser))
-	r.HandleFunc("PUT /{id}", ApiHandlerAdapter(uh.updateUser))
-	r.HandleFunc("DELETE /{id}", ApiHandlerAdapter(uh.deleteUser))
-	r.With(MiddlewareAdapter(JWTAuthMiddleware)).HandleFunc("GET /mock", ApiHandlerAdapter(uh.getMockUser))
+	r.With(MiddlewareAdapter(JWTAuthMiddleware), MiddlewareAdapter(OnlyAdminMiddleware)).HandleFunc("POST /", ApiHandlerAdapter(uh.insertUser))
+	r.With(MiddlewareAdapter(JWTAuthMiddleware)).HandleFunc("GET /", ApiHandlerAdapter(uh.getAllUsers))
+	r.With(MiddlewareAdapter(JWTAuthMiddleware)).HandleFunc("GET /{id}", ApiHandlerAdapter(uh.getUser))
+	r.With(MiddlewareAdapter(JWTAuthMiddleware)).HandleFunc("PUT /{id}", ApiHandlerAdapter(uh.updateUser))
+	r.With(MiddlewareAdapter(JWTAuthMiddleware), MiddlewareAdapter(OnlyAdminMiddleware)).HandleFunc("DELETE /{id}", ApiHandlerAdapter(uh.deleteUser))
+	r.With(MiddlewareAdapter(JWTAuthMiddleware), MiddlewareAdapter(OnlyAdminMiddleware)).HandleFunc("GET /mock", ApiHandlerAdapter(uh.getMockUser))
 
 	return r
 }
@@ -175,7 +175,7 @@ func (uh *UserHandler) getAllUsers(w http.ResponseWriter, r *http.Request) (*Han
 
 	// Query all users
 	log.Printf("[UserHandler:getAllUsers] Querying all users")
-	rows, err := uh.db.Query(context.Background(), `SELECT id, name, email FROM users;`)
+	rows, err := uh.db.Query(context.Background(), `SELECT id, name, email, role FROM users;`)
 	if err != nil {
 		log.Printf("[UserHandler:getAllUsers] Error querying all users: %v", err)
 		return nil, &HandlerError{
@@ -190,7 +190,7 @@ func (uh *UserHandler) getAllUsers(w http.ResponseWriter, r *http.Request) (*Han
 	var allUsers []user
 	for rows.Next() {
 		var u user
-		err = rows.Scan(&u.ID, &u.Name, &u.Email)
+		err = rows.Scan(&u.ID, &u.Name, &u.Email, &u.Role)
 		if err != nil {
 			log.Printf("[UserHandler:getAllUsers] Error scanning user row: %v. Parsing error.", err)
 			return nil, &HandlerError{
@@ -303,11 +303,11 @@ func (uh *UserHandler) updateUser(w http.ResponseWriter, r *http.Request) (*Hand
 		}
 	}
 
-	// update user
-	log.Printf("[UserHandler:updateUser] Updating user with id %d with {name: %s} and {email: %s}", id, updateUserReq.Name, updateUserReq.Email)
-	updatedUser := &user{}
-	query := `UPDATE users SET name = $1, email = $2 WHERE id = $3 RETURNING id, name, email;`
-	err = uh.db.QueryRow(context.Background(), query, updateUserReq.Name, updateUserReq.Email, id).Scan(&updatedUser.ID, &updatedUser.Name, &updatedUser.Email)
+	// query for id
+	log.Printf("[UserHandler:updateUser] Querying user with id %d", id)
+	queryById := `SELECT id, name FROM users WHERE id = $1;`
+	foundUser := &user{}
+	err = uh.db.QueryRow(context.Background(), queryById, id).Scan(&foundUser.ID, &foundUser.Name)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, &HandlerError{
@@ -315,6 +315,28 @@ func (uh *UserHandler) updateUser(w http.ResponseWriter, r *http.Request) (*Hand
 				Message: ErrorResponse{Code: "E404", Message: "Not found", Detail: "User with id " + idStr + " not found"},
 			}
 		}
+		return nil, &HandlerError{
+			Status:  http.StatusInternalServerError,
+			Message: ErrorResponse{Code: "E500", Message: "Internal Server Error", Detail: "Something went wrong. Contact support or try again later"},
+		}
+	}
+
+	// check if user is authorized to update the user
+	// user can update only if he is the same user or he is an admin
+	log.Printf("[UserHandler:updateUser] Checking if user is authorized to update user with id %d", id)
+	if foundUser.ID != id || r.Context().Value("role") != "admin" {
+		return nil, &HandlerError{
+			Status:  http.StatusForbidden,
+			Message: ErrorResponse{Code: "E403", Message: "Forbidden", Detail: "You are no authorized to update another user than yourself"},
+		}
+	}
+
+	// update user
+	log.Printf("[UserHandler:updateUser] Updating user with id %d with {name: %s} and {email: %s}", id, updateUserReq.Name, updateUserReq.Email)
+	updatedUser := &user{}
+	query := `UPDATE users SET name = $1, email = $2 WHERE id = $3 RETURNING id, name, email;`
+	err = uh.db.QueryRow(context.Background(), query, updateUserReq.Name, updateUserReq.Email, id).Scan(&updatedUser.ID, &updatedUser.Name, &updatedUser.Email)
+	if err != nil {
 		return nil, &HandlerError{
 			Status:  http.StatusInternalServerError,
 			Message: ErrorResponse{Code: "E500", Message: "Internal Server Error", Detail: "Something went wrong. Contact support or try again later"},
